@@ -7,6 +7,17 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
+    <section class="mode-menu" id="modeMenu" aria-label="玩法选择">
+      <div class="mode-menu-panel">
+        <h1>炸金花</h1>
+        <p>选择一种玩法开始</p>
+        <div class="mode-actions">
+          <button id="texasModeBtn">德州扑克</button>
+          <button id="zjhModeBtn">炸金花</button>
+        </div>
+      </div>
+    </section>
+
     <div class="rotate-overlay" id="rotateOverlay" aria-label="横屏提示">
       <div class="rotate-card">
         <strong>请横屏游玩</strong>
@@ -18,6 +29,8 @@
     <main class="table-shell">
       <section class="game-table" aria-label="炸金花牌桌">
         <header class="top-bar">
+          <button id="homeBtn" class="icon-button" title="返回主菜单" aria-label="返回主菜单">⌂</button>
+          <strong id="modeTitle" class="mode-title">德州扑克</strong>
           <p id="roundInfo" class="round-status">准备开局</p>
           <div class="header-actions">
             <button id="soundBtn" class="icon-button" title="声音开关" aria-label="声音开关">♪</button>

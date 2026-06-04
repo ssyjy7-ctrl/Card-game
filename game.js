@@ -28,6 +28,7 @@ const chipValues = [100, 50, 20, 10];
 const modes = {
   texas: { title: "德州扑克", holeCount: 2, communityCount: 5, revealSteps: [3, 1, 1], maxBettingRounds: 4 },
   zjh: { title: "炸金花", holeCount: 3, communityCount: 0, revealSteps: [], maxBettingRounds: 8 },
+  turtle: { title: "憋王八", holeCount: 0, communityCount: 0, revealSteps: [], maxBettingRounds: 0 },
 };
 
 let state;
@@ -41,6 +42,7 @@ const els = {
   modeMenu: document.querySelector("#modeMenu"),
   texasModeBtn: document.querySelector("#texasModeBtn"),
   zjhModeBtn: document.querySelector("#zjhModeBtn"),
+  turtleModeBtn: document.querySelector("#turtleModeBtn"),
   homeBtn: document.querySelector("#homeBtn"),
   modeTitle: document.querySelector("#modeTitle"),
   communityPanel: document.querySelector(".community-panel"),
@@ -242,6 +244,13 @@ function buildDeck() {
   );
 }
 
+function buildTurtleDeck() {
+  return [
+    ...buildDeck(),
+    { suit: "★", color: "red", rank: "大王", value: 99, joker: true },
+  ];
+}
+
 function shuffle(cards) {
   const deck = [...cards];
   for (let i = deck.length - 1; i > 0; i -= 1) {
@@ -353,6 +362,10 @@ function showModeMenu() {
 
 function newRound(keepChips = false) {
   if (!currentMode) return;
+  if (currentMode === "turtle") {
+    newTurtleRound();
+    return;
+  }
   const config = modeConfig();
   const oldChips = state?.players?.map((player) => player.chips) || [1000, 1000, 1000];
   const deck = shuffle(buildDeck());
@@ -429,6 +442,140 @@ function visibleCommunity() {
 
 function addLog(text) {
   state.logs.push(text);
+}
+
+function turtlePairCleanup(player) {
+  const buckets = player.hole.reduce((map, card) => {
+    if (card.joker) return map;
+    map[card.value] ||= [];
+    map[card.value].push(card);
+    return map;
+  }, {});
+  const removed = [];
+  Object.values(buckets).forEach((cards) => {
+    while (cards.length >= 2) {
+      removed.push(cards.pop(), cards.pop());
+    }
+  });
+  if (!removed.length) return 0;
+  const removeSet = new Set(removed);
+  player.hole = player.hole.filter((card) => !removeSet.has(card));
+  return removed.length / 2;
+}
+
+function cleanupAllTurtlePairs() {
+  state.players.forEach((player) => {
+    const pairs = turtlePairCleanup(player);
+    if (pairs) addLog(`${player.name}打出 ${pairs} 对。`);
+  });
+}
+
+function newTurtleRound() {
+  const deck = shuffle(buildTurtleDeck());
+  const players = playerNames.map((name, index) => ({
+    id: index,
+    name,
+    chips: 0,
+    inventory: createInventory(0),
+    roundBet: 0,
+    hole: [],
+    seen: index === 0,
+    folded: false,
+    winner: false,
+  }));
+  deck.forEach((card, index) => {
+    players[index % players.length].hole.push(card);
+  });
+
+  state = {
+    deck: [],
+    mode: "turtle",
+    community: [],
+    revealed: 0,
+    pot: 0,
+    potChips: [],
+    currentBet: 0,
+    turn: 0,
+    bettingRound: 1,
+    ended: false,
+    actionsThisRound: new Set(),
+    raiseMenuOpen: false,
+    logs: [],
+    players,
+    animateDeal: true,
+    animateLook: false,
+    lastRevealed: -1,
+    chipMove: null,
+    endMessageLogged: false,
+  };
+  addLog("进入憋王八：去小王留大王，发给三人。");
+  cleanupAllTurtlePairs();
+  addLog("轮流从下家抽一张牌，抽完自动打对子。");
+  render();
+  clearAnimationSoon();
+}
+
+function turtleActivePlayers() {
+  return state.players.filter((player) => player.hole.length > 0);
+}
+
+function nextTurtlePlayer(fromId) {
+  for (let offset = 1; offset <= state.players.length; offset += 1) {
+    const player = state.players[(fromId + offset) % state.players.length];
+    if (player.hole.length > 0) return player;
+  }
+  return null;
+}
+
+function advanceTurtleTurn() {
+  const active = turtleActivePlayers();
+  if (active.length <= 1) {
+    endTurtleRound(active[0] || state.players.find((player) => player.hole.some((card) => card.joker)));
+    return;
+  }
+  do {
+    state.turn = (state.turn + 1) % state.players.length;
+  } while (state.players[state.turn].hole.length === 0);
+  render();
+  if (state.turn !== 0) {
+    if (Math.random() < 0.3) speakLine("thinking", state.turn);
+    setTimeout(cpuTurtleAction, 650);
+  }
+}
+
+function drawTurtleCard(drawer, target, cardIndex = null) {
+  if (state.ended || !target || !target.hole.length) return;
+  const index = cardIndex ?? Math.floor(Math.random() * target.hole.length);
+  const [card] = target.hole.splice(index, 1);
+  drawer.hole.push(card);
+  addLog(`${drawer.name}从${target.name}手里抽走 1 张牌。`);
+  const pairs = turtlePairCleanup(drawer);
+  if (pairs) addLog(`${drawer.name}打出 ${pairs} 对。`);
+  if (card.joker) addLog(`${drawer.name}摸到了那张不妙的牌。`);
+  playSound("flip");
+  advanceTurtleTurn();
+}
+
+function canHumanDrawFrom(player) {
+  return state?.mode === "turtle" && !state.ended && state.turn === 0 && player.id !== 0 && player.hole.length > 0;
+}
+
+function cpuTurtleAction() {
+  if (state.ended || state.turn === 0) return;
+  drawTurtleCard(state.players[state.turn], nextTurtlePlayer(state.turn));
+}
+
+function endTurtleRound(loser) {
+  const finalLoser = loser || state.players.find((player) => player.hole.some((card) => card.joker));
+  state.ended = true;
+  state.players.forEach((player) => {
+    player.seen = true;
+    player.winner = player.id !== finalLoser?.id;
+  });
+  addLog(`${finalLoser?.name || "没人"}手里剩下大王，输了。`);
+  addLog("本局结束，可重新开局。");
+  playSound(finalLoser?.id === 0 ? "lose" : "win");
+  render();
 }
 
 function combinations(cards, size) {
@@ -794,6 +941,15 @@ function cpuAction() {
 function makeCard(card, hidden, extraClass = "", delay = 0) {
   const style = delay ? ` style="animation-delay: ${delay}ms"` : "";
   if (hidden) return `<div class="card back ${extraClass}"${style} aria-label="暗牌"></div>`;
+  if (card.joker) {
+    return `
+      <div class="card joker-card red ${extraClass}"${style} aria-label="大王">
+        <span class="rank">王</span>
+        <span class="suit">★</span>
+        <span class="rank bottom">大</span>
+      </div>
+    `;
+  }
   return `
     <div class="card ${card.color === "red" ? "red" : ""} ${extraClass}"${style} aria-label="${card.rank}${card.suit}">
       <span class="rank">${card.rank}</span>
@@ -861,7 +1017,7 @@ function renderChipFlight() {
 }
 
 function renderCommunity() {
-  els.communityPanel.classList.toggle("hidden", state.mode === "zjh");
+  els.communityPanel.classList.toggle("hidden", state.mode === "zjh" || state.mode === "turtle");
   els.communityCards.innerHTML = state.community
     .map((card, index) => {
       const extraClass = index === state.lastRevealed ? "flip-in" : "";
@@ -871,6 +1027,10 @@ function renderCommunity() {
 }
 
 function renderPlayers() {
+  if (state.mode === "turtle") {
+    renderTurtlePlayers();
+    return;
+  }
   els.players.innerHTML = state.players
     .map((player) => {
       const hidden = player.id === 0 ? !player.seen && !state.ended : !state.ended;
@@ -902,7 +1062,47 @@ function renderPlayers() {
     .join("");
 }
 
+function renderTurtlePlayers() {
+  els.players.innerHTML = state.players
+    .map((player) => {
+      const canDraw = canHumanDrawFrom(player);
+      const status = player.hole.length === 0 ? "已出完" : state.turn === player.id && !state.ended ? "行动中" : "等待";
+      return `
+        <article class="player turtle-player seat-${player.id} ${state.turn === player.id && !state.ended ? "active" : ""} ${player.winner ? "winner" : ""}">
+          <div class="player-head">
+            <div>
+              <div class="name">${player.name}</div>
+              <div>${player.hole.length} 张手牌</div>
+            </div>
+            <div>${status}</div>
+          </div>
+          <div class="cards turtle-cards">${player.hole.map((card, cardIndex) => {
+            const showFace = player.id === 0 || state.ended;
+            const cardHtml = makeCard(card, !showFace, canDraw ? "draw-target" : "", 0);
+            return canDraw
+              ? `<button class="draw-card-button" data-player-id="${player.id}" data-card-index="${cardIndex}" aria-label="抽${player.name}第${cardIndex + 1}张牌">${cardHtml}</button>`
+              : cardHtml;
+          }).join("")}</div>
+          <div class="hand-type">${player.id === 0 ? "点击对手背面牌抽牌" : canDraw ? "可抽" : ""}</div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
 function renderControls() {
+  if (state.mode === "turtle") {
+    const isHumanTurn = !state.ended && state.turn === 0;
+    els.lookBtn.disabled = true;
+    els.lookBtn.textContent = isHumanTurn ? "点牌抽" : "等待";
+    els.callBtn.disabled = true;
+    els.raiseBtn.disabled = true;
+    els.compareBtn.disabled = true;
+    els.foldBtn.disabled = true;
+    els.raisePanel.innerHTML = "";
+    els.raisePanel.classList.remove("open");
+    return;
+  }
   const isHumanTurn = !state.ended && state.turn === 0 && !human().folded;
   const raiseOptions = isHumanTurn ? possibleRaiseAmounts(human()) : [];
   els.lookBtn.disabled = !isHumanTurn || human().seen;
@@ -938,6 +1138,7 @@ function render() {
   renderPlayers();
   els.potChipStack.innerHTML = renderPotChips();
   els.arenaPot.textContent = state.pot;
+  document.querySelector(".table-pot").classList.toggle("hidden", state.mode === "turtle");
   renderChipFlight();
   els.pot.textContent = state.pot;
   els.currentBet.textContent = state.currentBet;
@@ -977,6 +1178,12 @@ els.raisePanel.addEventListener("click", (event) => {
   if (!button) return;
   raise(human(), Number(button.dataset.amount));
 });
+els.players.addEventListener("click", (event) => {
+  const button = event.target.closest(".draw-card-button");
+  if (!button || state?.mode !== "turtle" || state.turn !== 0 || state.ended) return;
+  const target = state.players[Number(button.dataset.playerId)];
+  drawTurtleCard(human(), target, Number(button.dataset.cardIndex));
+});
 els.compareBtn.addEventListener("click", () => {
   speakLine("showdown", 0);
   call(human());
@@ -1007,6 +1214,9 @@ els.voiceBtn.addEventListener("click", () => {
 });
 els.texasModeBtn.addEventListener("click", () => startMode("texas"));
 els.zjhModeBtn.addEventListener("click", () => startMode("zjh"));
+els.turtleModeBtn.addEventListener("click", () => {
+  window.location.href = "turtle.html";
+});
 els.homeBtn.addEventListener("click", () => showModeMenu());
 els.lockLandscapeBtn?.addEventListener("click", async () => {
   try {

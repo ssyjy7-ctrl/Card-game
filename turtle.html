@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>憋王八</title>
+    <link rel="stylesheet" href="turtle.css" />
+  </head>
+  <body>
+    <div class="rotate-overlay" aria-label="横屏提示">
+      <div class="rotate-card">
+        <strong>请横屏游戏</strong>
+        <span>憋王八需要看清每家的手牌数量，横屏会更舒服</span>
+      </div>
+    </div>
+
+    <main class="turtle-shell">
+      <section class="turtle-table" aria-label="憋王八牌桌">
+        <header class="top-bar">
+          <a class="icon-button" href="index.html" title="返回主菜单" aria-label="返回主菜单">←</a>
+          <div>
+            <h1>憋王八</h1>
+            <p id="roundText">抽下一家一张牌，凑成对子自动打出，最后拿着大王的人输。</p>
+          </div>
+          <div class="top-actions">
+            <label class="ai-control">
+              人机
+              <select id="aiCount">
+                <option value="2">2</option>
+                <option value="3">3</option>
+                <option value="4">4</option>
+              </select>
+            </label>
+            <button id="newRoundBtn">重新开局</button>
+          </div>
+        </header>
+
+        <section class="play-area">
+          <div id="players" class="players"></div>
+          <section class="discard-zone" aria-label="出牌区">
+            <div>出牌区</div>
+            <strong id="discardCount">0 对</strong>
+          </section>
+          <div class="brand-watermark" aria-hidden="true">憋王八</div>
+        </section>
+
+        <aside class="log-panel" aria-label="牌局旁白">
+          <ol id="log"></ol>
+        </aside>
+      </section>
+    </main>
+
+    <script src="turtle.js"></script>
+  </body>
+</html>

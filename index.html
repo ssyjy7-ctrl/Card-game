@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>炸金花</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="table-shell">
+      <section class="game-table" aria-label="炸金花牌桌">
+        <header class="top-bar">
+          <p id="roundInfo" class="round-status">准备开局</p>
+          <div class="header-actions">
+            <button id="soundBtn" class="icon-button" title="声音开关" aria-label="声音开关">♪</button>
+            <button id="voiceBtn" class="icon-button" title="语音开关" aria-label="语音开关">话</button>
+            <button id="newRoundBtn" class="icon-button" title="重新开局" aria-label="重新开局">
+              ↻
+            </button>
+          </div>
+        </header>
+
+        <section class="table-arena" aria-label="牌桌区域">
+          <section class="community-panel" aria-label="公共牌">
+            <div class="panel-title">公共牌池</div>
+            <div id="communityCards" class="community-cards"></div>
+          </section>
+
+          <section class="table-pot" aria-label="牌桌筹码池">
+            <div class="panel-title">筹码池</div>
+            <div id="potChipStack" class="chip-stack pot-stack"></div>
+            <strong id="arenaPot">0</strong>
+          </section>
+
+          <div id="chipFlight" class="chip-flight" aria-hidden="true"></div>
+
+          <div id="players" class="players"></div>
+
+          <footer class="controls" aria-label="操作">
+            <button id="lookBtn">看牌</button>
+            <button id="callBtn">跟注</button>
+            <button id="raiseBtn">加注</button>
+            <button id="compareBtn">摊牌</button>
+            <button id="foldBtn" class="danger">弃牌</button>
+            <div id="raisePanel" class="raise-panel" aria-label="加注金额"></div>
+          </footer>
+        </section>
+
+        <section class="pot-panel" aria-live="polite">
+          <div>
+            <span>底池</span>
+            <strong id="pot">0</strong>
+          </div>
+          <div>
+            <span>当前注</span>
+            <strong id="currentBet">0</strong>
+          </div>
+          <div>
+            <span>你的筹码</span>
+            <strong id="playerChips">1000</strong>
+          </div>
+        </section>
+
+        <section class="log-panel" aria-label="牌局记录">
+          <ol id="log"></ol>
+        </section>
+
+        <div class="brand-watermark" aria-hidden="true">炸金花</div>
+
+      </section>
+    </main>
+
+    <script src="game.js"></script>
+  </body>
+</html>

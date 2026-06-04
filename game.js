@@ -53,6 +53,7 @@ const els = {
   newRoundBtn: document.querySelector("#newRoundBtn"),
   soundBtn: document.querySelector("#soundBtn"),
   voiceBtn: document.querySelector("#voiceBtn"),
+  lockLandscapeBtn: document.querySelector("#lockLandscapeBtn"),
 };
 
 const voiceLines = {
@@ -907,6 +908,19 @@ els.voiceBtn.addEventListener("click", () => {
     window.speechSynthesis.cancel();
     if (voiceStopTimer) clearTimeout(voiceStopTimer);
     voiceStopTimer = null;
+  }
+});
+els.lockLandscapeBtn?.addEventListener("click", async () => {
+  try {
+    if (document.documentElement.requestFullscreen) {
+      await document.documentElement.requestFullscreen();
+    }
+    if (screen.orientation?.lock) {
+      await screen.orientation.lock("landscape");
+    }
+  } catch (error) {
+    addLog("当前浏览器不支持自动锁定横屏，请手动旋转手机。");
+    render();
   }
 });
 

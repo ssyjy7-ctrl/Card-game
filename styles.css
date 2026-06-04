@@ -48,6 +48,32 @@ button:disabled {
   box-shadow: none;
 }
 
+.rotate-overlay {
+  display: none;
+}
+
+.rotate-card {
+  width: min(360px, calc(100vw - 32px));
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+  padding: 22px;
+  border: 1px solid rgba(242, 187, 69, 0.42);
+  border-radius: 8px;
+  background: rgba(7, 22, 23, 0.94);
+  color: var(--ink);
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.42);
+}
+
+.rotate-card strong {
+  font-size: 24px;
+}
+
+.rotate-card span {
+  color: var(--muted);
+}
+
 .table-shell {
   height: 100vh;
   display: grid;
@@ -645,7 +671,213 @@ button:disabled {
   }
 }
 
-@media (max-width: 760px) {
+@media (hover: none) and (pointer: coarse) and (orientation: portrait) {
+  .rotate-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    display: grid;
+    place-items: center;
+    padding: 16px;
+    background:
+      radial-gradient(circle at center, rgba(242, 187, 69, 0.16), transparent 38%),
+      rgba(9, 22, 22, 0.96);
+  }
+}
+
+@media (hover: none) and (pointer: coarse) and (orientation: landscape) and (max-height: 560px) {
+  .table-shell {
+    padding: 4px;
+  }
+
+  .game-table {
+    width: 100vw;
+    height: 100vh;
+    grid-template-columns: 1fr;
+    grid-template-rows: 42px minmax(0, 1fr);
+    grid-template-areas:
+      "top"
+      "arena";
+    gap: 4px;
+    padding: 8px;
+    border-width: 5px;
+    border-radius: 18px;
+  }
+
+  .top-bar {
+    min-height: 38px;
+  }
+
+  .header-actions {
+    gap: 6px;
+  }
+
+  .icon-button {
+    width: 38px;
+    min-height: 36px;
+    font-size: 21px;
+  }
+
+  .log-panel,
+  .brand-watermark {
+    display: none;
+  }
+
+  .table-arena {
+    border-radius: 16px;
+  }
+
+  .community-panel {
+    top: 23%;
+    width: min(360px, 42vw);
+    gap: 5px;
+    padding: 7px;
+  }
+
+  .panel-title {
+    font-size: 12px;
+  }
+
+  .community-cards {
+    gap: 5px;
+    min-height: 62px;
+  }
+
+  .table-pot {
+    top: 48%;
+    min-width: 138px;
+    max-width: 180px;
+    padding: 7px 10px;
+  }
+
+  .table-pot strong {
+    font-size: 20px;
+  }
+
+  .player {
+    width: 186px;
+    min-height: 136px;
+    padding: 7px;
+  }
+
+  .seat-1 {
+    left: 10px;
+    top: 10px;
+  }
+
+  .seat-2 {
+    right: 10px;
+    top: 10px;
+  }
+
+  .seat-0 {
+    left: 10px;
+    bottom: 8px;
+    width: 240px;
+    min-height: 150px;
+  }
+
+  .player-head {
+    margin-bottom: 4px;
+    font-size: 11px;
+  }
+
+  .name {
+    font-size: 15px;
+  }
+
+  .cards {
+    gap: 5px;
+    min-height: 58px;
+  }
+
+  .card {
+    width: 42px;
+    height: 58px;
+    flex-basis: 42px;
+    border-width: 3px;
+    border-radius: 7px;
+    padding: 4px;
+  }
+
+  .rank {
+    left: 5px;
+    top: 4px;
+    font-size: 12px;
+  }
+
+  .rank.bottom {
+    right: 5px;
+    bottom: 4px;
+  }
+
+  .suit {
+    font-size: 18px;
+  }
+
+  .hand-type {
+    margin-top: 3px;
+    min-height: 15px;
+    font-size: 13px;
+  }
+
+  .player-bank {
+    min-height: 32px;
+    margin-top: 3px;
+  }
+
+  .player-bank strong {
+    font-size: 14px;
+  }
+
+  .chip-stack {
+    gap: 3px;
+    min-width: 92px;
+    min-height: 28px;
+  }
+
+  .chip-pile {
+    width: 21px;
+    height: 27px;
+    flex-basis: 21px;
+  }
+
+  .chip {
+    width: 20px;
+    height: 20px;
+    border-width: 2px;
+    font-size: 7px;
+  }
+
+  .controls {
+    left: 266px;
+    right: 8px;
+    bottom: 14px;
+    width: auto;
+    gap: 7px;
+  }
+
+  .controls button {
+    min-width: 58px;
+    min-height: 34px;
+    padding: 0 10px;
+    font-size: 14px;
+  }
+
+  .raise-panel {
+    width: min(440px, 100%);
+    max-height: 116px;
+    overflow: auto;
+    padding: 7px;
+  }
+
+  .raise-panel button {
+    min-height: 30px;
+    padding: 0 9px;
+  }
+}
+
+@media (max-width: 760px) and (orientation: portrait) {
   body {
     overflow: auto;
   }

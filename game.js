@@ -25,14 +25,25 @@ const ante = 20;
 const raiseStep = 20;
 const communityCount = 5;
 const chipValues = [100, 50, 20, 10];
+const modes = {
+  texas: { title: "德州扑克", holeCount: 2, communityCount: 5, revealSteps: [3, 1, 1], maxBettingRounds: 4 },
+  zjh: { title: "炸金花", holeCount: 3, communityCount: 0, revealSteps: [], maxBettingRounds: 8 },
+};
 
 let state;
+let currentMode = null;
 let audioContext = null;
 let soundEnabled = true;
 let voiceEnabled = false;
 let voiceStopTimer = null;
 
 const els = {
+  modeMenu: document.querySelector("#modeMenu"),
+  texasModeBtn: document.querySelector("#texasModeBtn"),
+  zjhModeBtn: document.querySelector("#zjhModeBtn"),
+  homeBtn: document.querySelector("#homeBtn"),
+  modeTitle: document.querySelector("#modeTitle"),
+  communityPanel: document.querySelector(".community-panel"),
   players: document.querySelector("#players"),
   communityCards: document.querySelector("#communityCards"),
   potChipStack: document.querySelector("#potChipStack"),
@@ -324,7 +335,25 @@ function canPayAmount(player, amount) {
   return paymentChips(clone, amount).reduce((sum, value) => sum + value, 0) === amount;
 }
 
+function modeConfig() {
+  return modes[currentMode || "texas"];
+}
+
+function startMode(mode) {
+  currentMode = mode;
+  els.modeMenu.classList.add("hidden");
+  newRound(false);
+}
+
+function showModeMenu() {
+  currentMode = null;
+  state = null;
+  els.modeMenu.classList.remove("hidden");
+}
+
 function newRound(keepChips = false) {
+  if (!currentMode) return;
+  const config = modeConfig();
   const oldChips = state?.players?.map((player) => player.chips) || [1000, 1000, 1000];
   const deck = shuffle(buildDeck());
   const players = playerNames.map((name, index) => ({
@@ -333,7 +362,7 @@ function newRound(keepChips = false) {
     chips: keepChips ? Math.max(oldChips[index], 0) : 1000,
     inventory: createInventory(keepChips ? Math.max(oldChips[index], 0) : 1000),
     roundBet: 0,
-    hole: deck.splice(0, 3),
+    hole: deck.splice(0, config.holeCount),
     seen: false,
     folded: false,
     winner: false,
@@ -341,7 +370,8 @@ function newRound(keepChips = false) {
 
   state = {
     deck,
-    community: deck.splice(0, communityCount),
+    mode: currentMode,
+    community: deck.splice(0, config.communityCount),
     revealed: 0,
     pot: 0,
     potChips: [],
@@ -361,7 +391,8 @@ function newRound(keepChips = false) {
   };
 
   state.players.forEach((player) => pay(player, ante));
-  addLog(`每人下底注 ${ante}，每人拿到 3 张私牌。`);
+  addLog(`进入${config.title}，每人下底注 ${ante}。`);
+  addLog(`每人拿到 ${config.holeCount} 张底牌。`);
   playSound("deal");
   render();
   clearAnimationSoon();
@@ -482,7 +513,33 @@ function bestScore(cards) {
   }, null);
 }
 
+function scoreThree(cards) {
+  const values = cards.map((card) => card.value).sort((a, b) => b - a);
+  const suitsSame = cards.every((card) => card.suit === cards[0].suit);
+  const counts = values.reduce((map, value) => {
+    map[value] = (map[value] || 0) + 1;
+    return map;
+  }, {});
+  const groups = Object.entries(counts)
+    .map(([value, count]) => ({ value: Number(value), count }))
+    .sort((a, b) => b.count - a.count || b.value - a.value);
+  const wheel = values.join(",") === "14,3,2";
+  const straightHigh = wheel ? 3 : values[0];
+  const straight = wheel || values[0] - 1 === values[1] && values[1] - 1 === values[2];
+
+  if (groups[0].count === 3) return { level: 6, name: "豹子", ranks: [groups[0].value], cards };
+  if (straight && suitsSame) return { level: 5, name: "同花顺", ranks: [straightHigh], cards };
+  if (suitsSame) return { level: 4, name: "同花", ranks: values, cards };
+  if (straight) return { level: 3, name: "顺子", ranks: [straightHigh], cards };
+  if (groups[0].count === 2) {
+    const kicker = groups.find((group) => group.count === 1).value;
+    return { level: 2, name: "对子", ranks: [groups[0].value, kicker], cards };
+  }
+  return { level: 1, name: "散牌", ranks: values, cards };
+}
+
 function playerScore(player, revealAll = false) {
+  if (state.mode === "zjh") return scoreThree(player.hole);
   const publicCards = revealAll ? state.community : visibleCommunity();
   return bestScore([...player.hole, ...publicCards]);
 }
@@ -576,11 +633,34 @@ function afterAction() {
 
   const everyoneActed = playersWhoCanBet.every((player) => state.actionsThisRound.has(player.id));
   if (everyoneActed) {
-    advanceCommunity();
+    advanceRound();
     return;
   }
 
   moveTurn();
+}
+
+function advanceRound() {
+  if (state.mode === "zjh") {
+    state.actionsThisRound.clear();
+    state.players.forEach((player) => {
+      player.roundBet = 0;
+    });
+    state.bettingRound += 1;
+    if (state.bettingRound > modeConfig().maxBettingRounds) {
+      showdown("达到封顶轮数");
+      return;
+    }
+    state.turn = firstBettingPlayerId();
+    addLog(`进入第 ${state.bettingRound} 轮下注。`);
+    render();
+    if (state.turn !== 0) {
+      if (Math.random() < 0.28) speakLine("thinking", state.turn);
+      setTimeout(cpuAction, 650);
+    }
+    return;
+  }
+  advanceCommunity();
 }
 
 function advanceCommunity() {
@@ -589,11 +669,13 @@ function advanceCommunity() {
     player.roundBet = 0;
   });
 
-  if (state.revealed < communityCount) {
-    state.revealed += 1;
+  if (state.revealed < modeConfig().communityCount) {
+    const step = modeConfig().revealSteps[Math.min(state.bettingRound - 1, modeConfig().revealSteps.length - 1)] || 1;
+    const from = state.revealed;
+    state.revealed = Math.min(modeConfig().communityCount, state.revealed + step);
     state.lastRevealed = state.revealed - 1;
-    const card = state.community[state.revealed - 1];
-    addLog(`公共牌翻出第 ${state.revealed} 张：${card.rank}${card.suit}。`);
+    const shown = state.community.slice(from, state.revealed).map((card) => `${card.rank}${card.suit}`).join("、");
+    addLog(`公共牌翻出：${shown}。`);
     playSound("flip");
     state.bettingRound += 1;
     state.turn = firstBettingPlayerId();
@@ -779,6 +861,7 @@ function renderChipFlight() {
 }
 
 function renderCommunity() {
+  els.communityPanel.classList.toggle("hidden", state.mode === "zjh");
   els.communityCards.innerHTML = state.community
     .map((card, index) => {
       const extraClass = index === state.lastRevealed ? "flip-in" : "";
@@ -827,7 +910,7 @@ function renderControls() {
   els.raiseBtn.disabled = !isHumanTurn || !raiseOptions.length;
   els.raiseBtn.textContent = state.raiseMenuOpen ? "收起" : "加注";
   els.compareBtn.disabled = !isHumanTurn || activePlayers().length < 2;
-  els.compareBtn.textContent = state.revealed < communityCount ? "强开" : "摊牌";
+  els.compareBtn.textContent = state.mode === "zjh" || state.revealed < modeConfig().communityCount ? "强开" : "摊牌";
   els.foldBtn.disabled = !isHumanTurn;
   renderRaisePanel(isHumanTurn, raiseOptions);
 }
@@ -849,6 +932,8 @@ function renderRaisePanel(isHumanTurn, raiseOptions) {
 }
 
 function render() {
+  if (!state) return;
+  document.body.dataset.mode = state.mode;
   renderCommunity();
   renderPlayers();
   els.potChipStack.innerHTML = renderPotChips();
@@ -857,9 +942,12 @@ function render() {
   els.pot.textContent = state.pot;
   els.currentBet.textContent = state.currentBet;
   els.playerChips.textContent = human().chips;
+  els.modeTitle.textContent = modeConfig().title;
   els.roundInfo.textContent = state.ended
     ? ""
-    : `第 ${state.bettingRound} 轮 · 公共牌 ${state.revealed}/${communityCount} · ${state.players[state.turn].name}行动`;
+    : state.mode === "zjh"
+      ? `第 ${state.bettingRound} 轮 · ${state.players[state.turn].name}行动`
+      : `第 ${state.bettingRound} 轮 · 公共牌 ${state.revealed}/${modeConfig().communityCount} · ${state.players[state.turn].name}行动`;
   els.log.innerHTML = state.logs.map((entry) => `<li>${entry}</li>`).join("");
   if (els.logPanel) els.logPanel.scrollTop = els.logPanel.scrollHeight;
   renderControls();
@@ -892,7 +980,7 @@ els.raisePanel.addEventListener("click", (event) => {
 els.compareBtn.addEventListener("click", () => {
   speakLine("showdown", 0);
   call(human());
-  if (!state.ended) showdown(state.revealed < communityCount ? "你强行开牌" : "你选择摊牌");
+  if (!state.ended) showdown(state.mode === "zjh" || state.revealed < modeConfig().communityCount ? "你强行开牌" : "你选择摊牌");
 });
 els.foldBtn.addEventListener("click", () => fold(human()));
 els.newRoundBtn.addEventListener("click", () => {
@@ -917,6 +1005,9 @@ els.voiceBtn.addEventListener("click", () => {
     voiceStopTimer = null;
   }
 });
+els.texasModeBtn.addEventListener("click", () => startMode("texas"));
+els.zjhModeBtn.addEventListener("click", () => startMode("zjh"));
+els.homeBtn.addEventListener("click", () => showModeMenu());
 els.lockLandscapeBtn?.addEventListener("click", async () => {
   try {
     if (document.documentElement.requestFullscreen) {
@@ -931,4 +1022,4 @@ els.lockLandscapeBtn?.addEventListener("click", async () => {
   }
 });
 
-newRound(false);
+showModeMenu();

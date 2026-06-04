@@ -83,7 +83,14 @@ function randomItem(items) {
 
 function chooseChineseVoice() {
   const voices = window.speechSynthesis.getVoices?.() || [];
-  return voices.find((voice) => /zh|Chinese|Mandarin|普通话|中文/i.test(`${voice.lang} ${voice.name}`)) || null;
+  const voiceText = (voice) => `${voice.lang} ${voice.name} ${voice.voiceURI || ""}`;
+  const isCantonese = (voice) => /粤|粵|Cantonese|Hong Kong|香港|zh-HK|zh_MO/i.test(voiceText(voice));
+  return (
+    voices.find((voice) => /^zh-CN$/i.test(voice.lang) && !isCantonese(voice)) ||
+    voices.find((voice) => /Mandarin|普通话|普通話|Putonghua|China/i.test(voiceText(voice)) && !isCantonese(voice)) ||
+    voices.find((voice) => /^zh/i.test(voice.lang) && !isCantonese(voice)) ||
+    null
+  );
 }
 
 function speakLine(kind, playerId = state?.turn ?? 0) {

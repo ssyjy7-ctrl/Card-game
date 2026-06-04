@@ -52,6 +52,55 @@ button:disabled {
   display: none;
 }
 
+.hidden {
+  display: none !important;
+}
+
+.mode-menu {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(242, 187, 69, 0.18), transparent 36%),
+    linear-gradient(135deg, #12312c, #101514 58%, #281819);
+}
+
+.mode-menu-panel {
+  width: min(520px, calc(100vw - 32px));
+  display: grid;
+  gap: 18px;
+  justify-items: center;
+  padding: 34px;
+  border: 1px solid rgba(242, 187, 69, 0.42);
+  border-radius: 8px;
+  background: rgba(7, 22, 23, 0.9);
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.44);
+}
+
+.mode-menu h1 {
+  margin: 0;
+  font-size: clamp(44px, 7vw, 76px);
+}
+
+.mode-menu p {
+  margin: 0;
+  color: var(--muted);
+}
+
+.mode-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.mode-actions button {
+  min-width: 150px;
+}
+
 .rotate-card {
   width: min(360px, calc(100vw - 32px));
   display: grid;
@@ -115,6 +164,12 @@ button:disabled {
   min-width: 0;
   justify-content: flex-end;
   min-height: 58px;
+}
+
+.mode-title {
+  margin-right: auto;
+  color: rgba(247, 241, 223, 0.82);
+  font-size: 18px;
 }
 
 .header-actions {
@@ -197,6 +252,10 @@ button:disabled {
 .table-pot strong {
   font-size: 24px;
   line-height: 1;
+}
+
+body[data-mode="zjh"] .table-pot {
+  top: 38%;
 }
 
 .players {
